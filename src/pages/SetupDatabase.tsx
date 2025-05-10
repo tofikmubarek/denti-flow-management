@@ -1,139 +1,154 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { createTableSQL } from '@/lib/db/contacts';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
+import { Clipboard, CheckCircle, AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const SetupDatabase = () => {
-  const { toast } = useToast();
-  const [isCreating, setIsCreating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreated, setIsCreated] = useState(false);
   
-  // Check if Supabase is configured
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
-
-  const createDatabaseTables = async () => {
-    if (!isConfigured) {
-      toast({
-        variant: 'destructive',
-        title: 'Configuration Error',
-        description: 'Supabase URL and Anonymous Key are required.'
-      });
-      return;
-    }
-
-    try {
-      setIsCreating(true);
-      
-      // Execute the SQL to create tables - wrapped in try/catch since we expect this to fail if not configured
+  useEffect(() => {
+    // Check if tables already exist
+    const checkTables = async () => {
       try {
-        const { error } = await supabase.rpc('exec_sql', { sql: createTableSQL });
+        const { data, error } = await supabase
+          .from('contacts')
+          .select('id')
+          .limit(1);
         
-        if (error) {
-          console.error('Error creating tables:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Database Error',
-            description: `Failed to create tables: ${error.message}`
-          });
-          return;
+        if (!error && data) {
+          setIsCreated(true);
         }
-
-        toast({
-          title: 'Success',
-          description: 'Database tables created successfully'
-        });
-      } catch (error: any) {
-        // This will catch errors from the mock client too
-        console.error('Supabase error:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Database Error',
-          description: error.message || 'Failed to execute SQL'
-        });
+      } catch (error) {
+        console.error('Error checking tables:', error);
       }
-    } catch (error: any) {
-      console.error('Error:', error);
+    };
+    
+    checkTables();
+  }, []);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(createTableSQL);
+    setCopied(true);
+    toast({
+      title: "Copied to clipboard",
+      description: "SQL has been copied to your clipboard",
+    });
+    
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const createTables = async () => {
+    setIsLoading(true);
+    try {
+      // Use rpc to run the SQL directly if available, otherwise provide instructions
+      const { error } = await supabase.rpc('run_sql_query', { 
+        query: createTableSQL 
+      });
+      
+      if (error) {
+        console.error('Error creating tables:', error);
+        toast({
+          variant: "destructive",
+          title: "Error creating tables",
+          description: "Please run the SQL manually in the Supabase SQL editor",
+        });
+      } else {
+        toast({
+          title: "Tables created successfully",
+          description: "Your database is now set up and ready to use",
+        });
+        setIsCreated(true);
+      }
+    } catch (error) {
+      console.error('Error creating tables:', error);
       toast({
-        variant: 'destructive',
-        title: 'Database Error',
-        description: `An unexpected error occurred: ${error.message}`
+        variant: "destructive",
+        title: "Error creating tables",
+        description: "Please run the SQL manually in the Supabase SQL editor",
       });
     } finally {
-      setIsCreating(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="container max-w-3xl mx-auto py-10">
-      {!isConfigured && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Configuration Required</AlertTitle>
+    <div className="container mx-auto max-w-4xl py-8">
+      <h1 className="text-3xl font-bold mb-8">Database Setup</h1>
+      
+      {isCreated ? (
+        <Alert className="mb-8 bg-green-50 border-green-200">
+          <CheckCircle className="h-5 w-5 text-green-500" />
+          <AlertTitle>Database is ready!</AlertTitle>
           <AlertDescription>
-            <p>Missing Supabase configuration. Please add the following environment variables to your project:</p>
-            <ul className="list-disc pl-5 mt-2 mb-4 space-y-1 text-sm">
-              <li>VITE_SUPABASE_URL</li>
-              <li>VITE_SUPABASE_ANON_KEY</li>
-            </ul>
-            <p className="text-sm">
-              You can find these values in your Supabase project settings under API.
-            </p>
+            Your Supabase database is configured and ready to use.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className="mb-8 bg-amber-50 border-amber-200">
+          <AlertCircle className="h-5 w-5 text-amber-500" />
+          <AlertTitle>Database setup required</AlertTitle>
+          <AlertDescription>
+            You need to set up your database tables to use this application.
           </AlertDescription>
         </Alert>
       )}
-      
+
       <Card>
         <CardHeader>
-          <CardTitle>Database Setup</CardTitle>
+          <CardTitle>Database Configuration</CardTitle>
           <CardDescription>
-            Create the necessary tables for the contacts management system
+            Create the necessary tables in your Supabase project.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            This will create the following tables in your Supabase database:
-          </p>
-          <ul className="list-disc pl-5 space-y-1 text-sm">
-            <li>contacts: Store main contact information</li>
-            <li>addresses: Store multiple addresses per contact</li>
-            <li>tags: Store tag definitions</li>
-            <li>contact_tags: Join table for contacts and tags</li>
-          </ul>
+          <Tabs defaultValue="automatic">
+            <TabsList className="mb-4">
+              <TabsTrigger value="automatic">Automatic Setup</TabsTrigger>
+              <TabsTrigger value="manual">Manual Setup</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="automatic">
+              <p className="mb-4">Click the button below to automatically create all required tables in your Supabase project.</p>
+              <Button 
+                onClick={createTables} 
+                disabled={isLoading || isCreated}
+                className="w-full"
+              >
+                {isLoading ? 'Setting up...' : isCreated ? 'Tables Created' : 'Create Tables'}
+              </Button>
+            </TabsContent>
+            
+            <TabsContent value="manual">
+              <p className="mb-4">Copy the SQL below and run it in the Supabase SQL Editor.</p>
+              <div className="relative">
+                <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto max-h-[400px] text-xs">
+                  {createTableSQL}
+                </pre>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="absolute top-2 right-2"
+                  onClick={copyToClipboard}
+                >
+                  {copied ? <CheckCircle className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
-        <CardFooter>
-          <Button 
-            onClick={createDatabaseTables} 
-            disabled={isCreating || !isConfigured}
-            className="w-full"
-            variant={!isConfigured ? "outline" : "default"}
-          >
-            {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isCreating ? 'Creating Tables...' : 'Create Database Tables'}
-          </Button>
+        <CardFooter className="flex flex-col items-start">
+          <p className="text-sm text-gray-500">
+            This will create the following tables: <code>contacts</code>, <code>addresses</code>, <code>tags</code>, and <code>contact_tags</code>.
+          </p>
         </CardFooter>
-      </Card>
-      
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Manual Setup Instructions</CardTitle>
-          <CardDescription>
-            If the automatic setup doesn't work, you can manually create the tables
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Copy and paste the following SQL into your Supabase SQL editor:
-          </p>
-          <div className="bg-muted p-4 rounded-md overflow-x-auto">
-            <pre className="text-xs whitespace-pre-wrap">{createTableSQL}</pre>
-          </div>
-        </CardContent>
       </Card>
     </div>
   );

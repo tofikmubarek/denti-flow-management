@@ -17,7 +17,8 @@ import {
   FileText,
   Users,
   Settings,
-  PieChart
+  PieChart,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,8 +60,9 @@ function AppSidebar() {
     { title: "Dashboard", path: "/", icon: LayoutDashboard },
     { title: "Orders", path: "/orders", icon: ShoppingCart },
     { title: "Inventory", path: "/inventory", icon: Package },
+    { title: "Contacts", path: "/contacts", icon: Users },
     { title: "Reports", path: "/reports", icon: PieChart },
-    { title: "Customers", path: "/customers", icon: Users },
+    { title: "Database Setup", path: "/setup-database", icon: Database },
     { title: "Settings", path: "/settings", icon: Settings },
   ];
 

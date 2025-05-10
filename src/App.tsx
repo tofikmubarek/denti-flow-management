@@ -11,6 +11,7 @@ import Inventory from "./pages/Inventory";
 import NewOrder from "./pages/NewOrder";
 import NotFound from "./pages/NotFound";
 import SetupDatabase from "./pages/SetupDatabase";
+import Contacts from "./pages/Contacts";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/orders/new" element={<MainLayout><NewOrder /></MainLayout>} />
           <Route path="/inventory" element={<MainLayout><Inventory /></MainLayout>} />
           <Route path="/setup-database" element={<MainLayout><SetupDatabase /></MainLayout>} />
+          <Route path="/contacts" element={<MainLayout><Contacts /></MainLayout>} />
           {/* Placeholder routes - these would be implemented in future iterations */}
           <Route path="/reports" element={<MainLayout><div className="p-4">Reports page coming soon</div></MainLayout>} />
           <Route path="/customers" element={<MainLayout><div className="p-4">Customers page coming soon</div></MainLayout>} />
