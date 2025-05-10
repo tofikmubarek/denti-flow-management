@@ -163,17 +163,17 @@ const getProgressColor = (available: number, threshold: number) => {
 
 const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
-  const [stockFilter, setStockFilter] = useState<string | undefined>();
+  const [categoryFilter, setCategoryFilter] = useState<string>("all_categories");
+  const [stockFilter, setStockFilter] = useState<string>("all_statuses");
 
   const filteredInventory = mockInventory.filter(item => {
     const matchesSearch = !searchTerm || 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.code.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = !categoryFilter || item.category === categoryFilter;
+    const matchesCategory = categoryFilter === "all_categories" || item.category === categoryFilter;
     const status = getStockStatus(item.available, item.threshold);
-    const matchesStock = !stockFilter || status === stockFilter;
+    const matchesStock = stockFilter === "all_statuses" || status === stockFilter;
     
     return matchesSearch && matchesCategory && matchesStock;
   });
@@ -263,7 +263,7 @@ const Inventory = () => {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all_categories">All Categories</SelectItem>
                   <SelectItem value="Implants">Implants</SelectItem>
                   <SelectItem value="Tools">Tools</SelectItem>
                   <SelectItem value="Components">Components</SelectItem>
@@ -275,7 +275,7 @@ const Inventory = () => {
                   <SelectValue placeholder="Stock Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all_statuses">All Status</SelectItem>
                   <SelectItem value="Out of Stock">Out of Stock</SelectItem>
                   <SelectItem value="Low Stock">Low Stock</SelectItem>
                   <SelectItem value="Adequate">Adequate</SelectItem>
@@ -285,8 +285,8 @@ const Inventory = () => {
 
               <Button variant="outline" className="flex-shrink-0" onClick={() => {
                 setSearchTerm("");
-                setCategoryFilter(undefined);
-                setStockFilter(undefined);
+                setCategoryFilter("all_categories");
+                setStockFilter("all_statuses");
               }}>
                 <Filter className="h-4 w-4 mr-2" />
                 Reset
