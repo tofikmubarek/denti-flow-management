@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { X, Plus, Save } from "lucide-react";
@@ -76,7 +75,11 @@ const NewOrder = () => {
     },
   });
 
-  const { fields, append, remove } = form.control._fields.items;
+  // Use useFieldArray to handle the dynamic form array
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items",
+  });
 
   const onSubmit = (values: FormValues) => {
     toast({
@@ -216,7 +219,7 @@ const NewOrder = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {fields.map((field: any, index: number) => (
+              {fields.map((field, index) => (
                 <div key={field.id} className="flex flex-col space-y-4 p-4 border rounded-md">
                   <div className="flex justify-between items-center">
                     <h4 className="font-medium">Item #{index + 1}</h4>
