@@ -30,23 +30,33 @@ const SetupDatabase = () => {
     try {
       setIsCreating(true);
       
-      // Execute the SQL to create tables
-      const { error } = await supabase.rpc('exec_sql', { sql: createTableSQL });
-      
-      if (error) {
-        console.error('Error creating tables:', error);
+      // Execute the SQL to create tables - wrapped in try/catch since we expect this to fail if not configured
+      try {
+        const { error } = await supabase.rpc('exec_sql', { sql: createTableSQL });
+        
+        if (error) {
+          console.error('Error creating tables:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Database Error',
+            description: `Failed to create tables: ${error.message}`
+          });
+          return;
+        }
+
+        toast({
+          title: 'Success',
+          description: 'Database tables created successfully'
+        });
+      } catch (error: any) {
+        // This will catch errors from the mock client too
+        console.error('Supabase error:', error);
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description: `Failed to create tables: ${error.message}`
+          description: error.message || 'Failed to execute SQL'
         });
-        return;
       }
-
-      toast({
-        title: 'Success',
-        description: 'Database tables created successfully'
-      });
     } catch (error: any) {
       console.error('Error:', error);
       toast({

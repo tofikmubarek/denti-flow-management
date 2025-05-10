@@ -1,4 +1,3 @@
-
 import { supabase } from '../supabase';
 
 export interface Contact {
@@ -102,107 +101,154 @@ FOR EACH ROW
 EXECUTE FUNCTION update_modified_column();
 `;
 
-// Contact CRUD operations
+// Contact CRUD operations - All these functions are now wrapped in try/catch blocks
+// to properly handle errors from the mock client when Supabase isn't configured
+
 export const getContacts = async () => {
-  const { data, error } = await supabase
-    .from('contacts')
-    .select('*')
-    .order('name');
-    
-  if (error) throw error;
-  return data as Contact[];
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('*')
+      .order('name');
+      
+    if (error) throw error;
+    return data as Contact[];
+  } catch (error: any) {
+    console.error('Error getting contacts:', error);
+    throw error;
+  }
 };
 
 export const getContactById = async (id: string) => {
-  const { data, error } = await supabase
-    .from('contacts')
-    .select(`
-      *,
-      addresses(*),
-      contact_tags(
-        id,
-        tags(*)
-      )
-    `)
-    .eq('id', id)
-    .single();
-    
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select(`
+        *,
+        addresses(*),
+        contact_tags(
+          id,
+          tags(*)
+        )
+      `)
+      .eq('id', id)
+      .single();
+      
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error(`Error getting contact with ID ${id}:`, error);
+    throw error;
+  }
 };
 
 export const createContact = async (contact: Contact) => {
-  const { data, error } = await supabase
-    .from('contacts')
-    .insert(contact)
-    .select()
-    .single();
-    
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert(contact)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('Error creating contact:', error);
+    throw error;
+  }
 };
 
 export const updateContact = async (id: string, contact: Contact) => {
-  const { data, error } = await supabase
-    .from('contacts')
-    .update(contact)
-    .eq('id', id)
-    .select()
-    .single();
-    
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .update(contact)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error(`Error updating contact with ID ${id}:`, error);
+    throw error;
+  }
 };
 
 export const deleteContact = async (id: string) => {
-  const { error } = await supabase
-    .from('contacts')
-    .delete()
-    .eq('id', id);
-    
-  if (error) throw error;
-  return true;
+  try {
+    const { error } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    return true;
+  } catch (error: any) {
+    console.error(`Error deleting contact with ID ${id}:`, error);
+    throw error;
+  }
 };
 
 // Address operations
 export const createAddress = async (address: Address) => {
-  const { data, error } = await supabase
-    .from('addresses')
-    .insert(address)
-    .select();
-    
-  if (error) throw error;
-  return data[0];
+  try {
+    const { data, error } = await supabase
+      .from('addresses')
+      .insert(address)
+      .select();
+      
+    if (error) throw error;
+    return data[0];
+  } catch (error: any) {
+    console.error('Error creating address:', error);
+    throw error;
+  }
 };
 
 // Tag operations
 export const getTags = async () => {
-  const { data, error } = await supabase
-    .from('tags')
-    .select('*')
-    .order('name');
-    
-  if (error) throw error;
-  return data as Tag[];
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*')
+      .order('name');
+      
+    if (error) throw error;
+    return data as Tag[];
+  } catch (error: any) {
+    console.error('Error getting tags:', error);
+    throw error;
+  }
 };
 
 export const createTag = async (tag: Tag) => {
-  const { data, error } = await supabase
-    .from('tags')
-    .insert(tag)
-    .select();
-    
-  if (error) throw error;
-  return data[0];
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .insert(tag)
+      .select();
+      
+    if (error) throw error;
+    return data[0];
+  } catch (error: any) {
+    console.error('Error creating tag:', error);
+    throw error;
+  }
 };
 
 // Contact tag operations
 export const addTagToContact = async (contactId: string, tagId: string) => {
-  const { data, error } = await supabase
-    .from('contact_tags')
-    .insert({ contact_id: contactId, tag_id: tagId })
-    .select();
-    
-  if (error) throw error;
-  return data[0];
+  try {
+    const { data, error } = await supabase
+      .from('contact_tags')
+      .insert({ contact_id: contactId, tag_id: tagId })
+      .select();
+      
+    if (error) throw error;
+    return data[0];
+  } catch (error: any) {
+    console.error(`Error adding tag ${tagId} to contact ${contactId}:`, error);
+    throw error;
+  }
 };
