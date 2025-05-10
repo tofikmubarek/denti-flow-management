@@ -176,8 +176,8 @@ const getStatusIcon = (status: string) => {
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
-  const [sourceFilter, setSourceFilter] = useState<string | undefined>();
+  const [statusFilter, setStatusFilter] = useState<string>("all_statuses");
+  const [sourceFilter, setSourceFilter] = useState<string>("all_sources");
 
   const filteredOrders = mockOrders.filter(order => {
     const matchesSearch = !searchTerm || 
@@ -186,8 +186,8 @@ const Orders = () => {
       order.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.company.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !statusFilter || order.status === statusFilter;
-    const matchesSource = !sourceFilter || order.source === sourceFilter;
+    const matchesStatus = statusFilter === "all_statuses" || order.status === statusFilter;
+    const matchesSource = sourceFilter === "all_sources" || order.source === sourceFilter;
     
     return matchesSearch && matchesStatus && matchesSource;
   });
@@ -239,7 +239,7 @@ const Orders = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all_statuses">All Statuses</SelectItem>
                   <SelectItem value="New">New</SelectItem>
                   <SelectItem value="Awaiting Confirmation">Awaiting Confirmation</SelectItem>
                   <SelectItem value="Processing">Processing</SelectItem>
@@ -255,7 +255,7 @@ const Orders = () => {
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Sources</SelectItem>
+                  <SelectItem value="all_sources">All Sources</SelectItem>
                   <SelectItem value="Website">Website</SelectItem>
                   <SelectItem value="WhatsApp">WhatsApp</SelectItem>
                   <SelectItem value="Email">Email</SelectItem>
@@ -265,8 +265,8 @@ const Orders = () => {
 
               <Button variant="outline" className="flex-shrink-0" onClick={() => {
                 setSearchTerm("");
-                setStatusFilter(undefined);
-                setSourceFilter(undefined);
+                setStatusFilter("all_statuses");
+                setSourceFilter("all_sources");
               }}>
                 <Filter className="h-4 w-4 mr-2" />
                 Reset
