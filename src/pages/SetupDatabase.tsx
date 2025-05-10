@@ -5,13 +5,28 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { createTableSQL } from '@/lib/db/contacts';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const SetupDatabase = () => {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Check if Supabase is configured
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
   const createDatabaseTables = async () => {
+    if (!isConfigured) {
+      toast({
+        variant: 'destructive',
+        title: 'Configuration Error',
+        description: 'Supabase URL and Anonymous Key are required.'
+      });
+      return;
+    }
+
     try {
       setIsCreating(true);
       
@@ -46,6 +61,23 @@ const SetupDatabase = () => {
 
   return (
     <div className="container max-w-3xl mx-auto py-10">
+      {!isConfigured && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Configuration Required</AlertTitle>
+          <AlertDescription>
+            <p>Missing Supabase configuration. Please add the following environment variables to your project:</p>
+            <ul className="list-disc pl-5 mt-2 mb-4 space-y-1 text-sm">
+              <li>VITE_SUPABASE_URL</li>
+              <li>VITE_SUPABASE_ANON_KEY</li>
+            </ul>
+            <p className="text-sm">
+              You can find these values in your Supabase project settings under API.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle>Database Setup</CardTitle>
@@ -67,8 +99,9 @@ const SetupDatabase = () => {
         <CardFooter>
           <Button 
             onClick={createDatabaseTables} 
-            disabled={isCreating}
+            disabled={isCreating || !isConfigured}
             className="w-full"
+            variant={!isConfigured ? "outline" : "default"}
           >
             {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isCreating ? 'Creating Tables...' : 'Create Database Tables'}
