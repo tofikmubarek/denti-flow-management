@@ -34,7 +34,8 @@ import {
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase"; // Ensure this path is correct
 
-const getStatusClass = (status: string) => {
+const getStatusClass = (status: string | undefined) => {
+  if (!status) return "bg-gray-100 text-gray-800"; // Default class for undefined or missing status
   switch (status.toLowerCase()) {
     case "new": return "status-new";
     case "processing": return "status-processing";
