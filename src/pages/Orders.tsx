@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -33,120 +32,7 @@ import {
   RefreshCcw
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
-// Mock orders data
-const mockOrders = [
-  {
-    id: "ORD-001",
-    customer: "Dr. James Smith",
-    email: "james.smith@brightsmile.com",
-    items: 3,
-    total: 249.99,
-    source: "Website",
-    status: "New",
-    date: "2025-05-09T13:45:00",
-    company: "Brightsmile Dental"
-  },
-  {
-    id: "ORD-002",
-    customer: "Brightsmile Clinic",
-    email: "orders@brightsmile.com",
-    items: 1,
-    total: 799.50,
-    source: "WhatsApp",
-    status: "Processing",
-    date: "2025-05-09T10:30:00",
-    company: "Brightsmile Clinic"
-  },
-  {
-    id: "ORD-003",
-    customer: "Dr. Sarah Johnson",
-    email: "sarah@citysmiles.co.uk",
-    items: 5,
-    total: 1250.00,
-    source: "Email",
-    status: "Dispatched",
-    date: "2025-05-08T16:15:00",
-    company: "City Smiles"
-  },
-  {
-    id: "ORD-004",
-    customer: "City Dental Practice",
-    email: "orders@citydental.com",
-    items: 2,
-    total: 325.75,
-    source: "Phone",
-    status: "Completed",
-    date: "2025-05-08T09:20:00",
-    company: "City Dental Practice"
-  },
-  {
-    id: "ORD-005",
-    customer: "Dr. Michael Wong",
-    email: "m.wong@dentalcare.org",
-    items: 1,
-    total: 149.99,
-    source: "Website",
-    status: "On Hold",
-    date: "2025-05-07T14:10:00",
-    company: "Dental Care Associates"
-  },
-  {
-    id: "ORD-006",
-    customer: "Smile Bright Clinic",
-    email: "reception@smilebright.dental",
-    items: 4,
-    total: 580.25,
-    source: "Website",
-    status: "New",
-    date: "2025-05-07T11:05:00",
-    company: "Smile Bright Clinic"
-  },
-  {
-    id: "ORD-007",
-    customer: "Dr. Emma Williams",
-    email: "emma@premiumdental.co.uk",
-    items: 2,
-    total: 420.00,
-    source: "Email",
-    status: "Processing",
-    date: "2025-05-06T15:30:00",
-    company: "Premium Dental"
-  },
-  {
-    id: "ORD-008",
-    customer: "Perfect Smile Ltd",
-    email: "info@perfectsmile.com",
-    items: 3,
-    total: 675.50,
-    source: "WhatsApp",
-    status: "Awaiting Confirmation",
-    date: "2025-05-06T09:45:00",
-    company: "Perfect Smile Ltd"
-  },
-  {
-    id: "ORD-009",
-    customer: "Dr. Robert Chen",
-    email: "r.chen@dentalexperts.com",
-    items: 1,
-    total: 899.99,
-    source: "Phone",
-    status: "Cancelled",
-    date: "2025-05-05T13:20:00",
-    company: "Dental Experts"
-  },
-  {
-    id: "ORD-010",
-    customer: "Elite Dentistry",
-    email: "orders@elitedentistry.co.uk",
-    items: 6,
-    total: 1725.75,
-    source: "Website",
-    status: "Completed",
-    date: "2025-05-05T10:15:00",
-    company: "Elite Dentistry"
-  }
-];
+import { supabase } from "@/lib/supabase"; // Ensure this path is correct
 
 const getStatusClass = (status: string) => {
   switch (status.toLowerCase()) {
@@ -175,19 +61,46 @@ const getStatusIcon = (status: string) => {
 };
 
 const Orders = () => {
+  const [orders, setOrders] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all_statuses");
   const [sourceFilter, setSourceFilter] = useState<string>("all_sources");
+  const [loading, setLoading] = useState(true);
 
-  const filteredOrders = mockOrders.filter(order => {
+  // Fetch orders from the database
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching orders:", error);
+      } else {
+        setOrders(data || []);
+      }
+    } catch (err) {
+      console.error("Unexpected error fetching orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = !searchTerm || 
-      order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.company.toLowerCase().includes(searchTerm.toLowerCase());
+      order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customer_company || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all_statuses" || order.status === statusFilter;
-    const matchesSource = sourceFilter === "all_sources" || order.source === sourceFilter;
+    const matchesSource = sourceFilter === "all_sources" || order.order_source === sourceFilter;
     
     return matchesSearch && matchesStatus && matchesSource;
   });
@@ -201,9 +114,11 @@ const Orders = () => {
             <FileDown className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button>
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            New Order
+          <Button asChild>
+            <Link to="/orders/new">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              New Order
+            </Link>
           </Button>
         </div>
       </div>
@@ -289,46 +204,53 @@ const Orders = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders.map((order) => (
-                  <TableRow key={order.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      <Link to={`/orders/${order.id}`} className="text-brand-blue hover:underline">
-                        {order.id}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{order.customer}</p>
-                        <p className="text-xs text-gray-500">{order.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{order.company}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {new Date(order.date).toLocaleString('en-GB', { 
-                        day: 'numeric', 
-                        month: 'short', 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{order.source}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">£{order.total.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <div className={`status-badge ${getStatusClass(order.status)} flex items-center w-fit`}>
-                        {getStatusIcon(order.status)}
-                        {order.status}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/orders/${order.id}`}>View</Link>
-                      </Button>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      Loading orders...
                     </TableCell>
                   </TableRow>
-                ))}
-                {filteredOrders.length === 0 && (
+                ) : filteredOrders.length > 0 ? (
+                  filteredOrders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <Link to={`/orders/${order.id}`} className="text-brand-blue hover:underline">
+                          {order.id}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{order.customer_name}</p>
+                          <p className="text-xs text-gray-500">{order.customer_email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{order.customer_company}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {new Date(order.created_at).toLocaleString('en-GB', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{order.order_source}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">£{order.total_amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className={`status-badge ${getStatusClass(order.status)} flex items-center w-fit`}>
+                          {getStatusIcon(order.status)}
+                          {order.status}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/orders/${order.id}`}>View</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       No orders found matching your filters
@@ -341,7 +263,7 @@ const Orders = () => {
           
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-500">
-              Showing {filteredOrders.length} of {mockOrders.length} orders
+              Showing {filteredOrders.length} of {orders.length} orders
             </div>
             <div className="flex items-center space-x-2">
               <Button variant="outline" size="sm" disabled>Previous</Button>
