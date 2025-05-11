@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,9 +91,11 @@ const Dashboard = () => {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button>
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            New Order
+          <Button asChild>
+            <Link to="/new-order">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              New Order
+            </Link>
           </Button>
         </div>
       </div>
