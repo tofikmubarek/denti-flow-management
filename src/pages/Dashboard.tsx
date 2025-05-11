@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient"; // Adjust the path if needed
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, AlertCircle, TrendingUp, Filter, FileText } from "lucide-react";
@@ -82,6 +83,29 @@ const getStatusClass = (status: string) => {
 };
 
 const Dashboard = () => {
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching orders:", error);
+        } else {
+          setOrders(data);
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching orders:", err);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
