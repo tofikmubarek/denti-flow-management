@@ -120,6 +120,55 @@ const Inventory = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Total Products</h2>
+            <p className="text-2xl font-bold">{inventory.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Low Stock Items</h2>
+            <p className="text-2xl font-bold">
+              {inventory.filter((item) => item.available !== null && item.available < (item.threshold || 0)).length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Out of Stock</h2>
+            <p className="text-2xl font-bold">
+              {inventory.filter((item) => item.available === 0).length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Last Synced</h2>
+            <p className="text-2xl font-bold">01:32:35</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex justify-between items-center">
+        <div className="flex space-x-2">
+          <Button variant="outline">All Products</Button>
+          <Button variant="outline">Implants</Button>
+          <Button variant="outline">Components</Button>
+          <Button variant="outline">Tools</Button>
+        </div>
+        <div className="flex space-x-2">
+          <Input placeholder="Search inventory..." />
+          <Button variant="outline">All Categories</Button>
+          <Button variant="outline">All Status</Button>
+          <Button variant="outline">Reset</Button>
+        </div>
+      </div>
+
+      {/* Product Inventory Table */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Product Inventory</CardTitle>
