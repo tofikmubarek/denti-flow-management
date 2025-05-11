@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase"; // Corrected import path
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, AlertCircle, TrendingUp, Filter, FileText } from "lucide-react";
+import { ShoppingCart, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
@@ -45,6 +45,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header Section */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-brand-dark">Dashboard</h1>
         <div className="space-x-2">
@@ -61,7 +62,39 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Orders */}
+      {/* Key Metrics Section */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Total Orders</h2>
+            <p className="text-2xl font-bold">128</p>
+            <p className="text-sm text-green-600">↑ 12% from last week</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Pending Orders</h2>
+            <p className="text-2xl font-bold">42</p>
+            <p className="text-sm text-yellow-600">Awaiting processing</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Products Shipped</h2>
+            <p className="text-2xl font-bold">267</p>
+            <p className="text-sm text-green-600">↑ 8% from last week</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <h2 className="text-lg font-semibold">Low Stock Items</h2>
+            <p className="text-2xl font-bold">8</p>
+            <p className="text-sm text-red-600">Requires attention</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Orders Section */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Orders</CardTitle>
@@ -80,29 +113,65 @@ const Dashboard = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      <Link to={`/orders/${order.id}`} className="text-brand-blue hover:underline">
-                        {order.id}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{order.customer_name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{order.source}</Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">{order.items_count}</TableCell>
-                    <TableCell className="hidden md:table-cell">£{order.total_amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <span className={`status-badge ${getStatusClass(order.status)}`}>
-                        {order.status}
-                      </span>
+                {orders.length > 0 ? (
+                  orders.map((order) => (
+                    <TableRow key={order.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <Link to={`/orders/${order.id}`} className="text-brand-blue hover:underline">
+                          {order.id}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{order.customer_name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{order.source}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{order.items_count}</TableCell>
+                      <TableCell className="hidden md:table-cell">£{order.total_amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <span className={`status-badge ${getStatusClass(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center">
+                      No orders found.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Low Stock Alerts Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Low Stock Alerts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul>
+            <li>Dentium SuperLine 4.0×10mm - 3/5</li>
+            <li>Dentium Implant Driver - 2/5</li>
+            <li>Impression Coping - 4/10</li>
+          </ul>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul>
+            <li>Create Manual Order</li>
+            <li>Update Inventory Levels</li>
+            <li>Generate Report</li>
+          </ul>
         </CardContent>
       </Card>
     </div>
