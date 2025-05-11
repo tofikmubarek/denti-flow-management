@@ -48,10 +48,11 @@ const SetupDatabase = () => {
   const createTables = async () => {
     setIsLoading(true);
     try {
-      // Use rpc to run the SQL directly if available, otherwise provide instructions
+      // Fix: Type error when calling RPC function
+      // Use a type assertion to tell TypeScript that query can be a string
       const { error } = await supabase.rpc('run_sql_query', { 
         query: createTableSQL 
-      });
+      } as any); // Use type assertion to fix the TypeScript error
       
       if (error) {
         console.error('Error creating tables:', error);
