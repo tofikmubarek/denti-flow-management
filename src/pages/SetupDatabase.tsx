@@ -48,10 +48,10 @@ const SetupDatabase = () => {
   const createTables = async () => {
     setIsLoading(true);
     try {
-      // Fix: Use proper type for RPC parameters
+      // Use a generic SQL execution RPC - this fixed the type error
       const { error } = await supabase.rpc('run_sql_query', { 
         query: createTableSQL 
-      } as { query: string }); // Use correct type assertion
+      });
       
       if (error) {
         console.error('Error creating tables:', error);
