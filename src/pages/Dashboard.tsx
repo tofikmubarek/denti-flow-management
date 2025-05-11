@@ -92,7 +92,7 @@ const Dashboard = () => {
             Filter
           </Button>
           <Button asChild>
-            <Link to="/new-order">
+            <Link to="/orders/new">
               <ShoppingCart className="h-4 w-4 mr-2" />
               New Order
             </Link>
