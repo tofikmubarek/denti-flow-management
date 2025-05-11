@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   Table, 
@@ -33,6 +32,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 // Define inventory item type to match the database schema
 type InventoryItem = {
@@ -95,6 +95,8 @@ const Inventory = () => {
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch inventory items from Supabase
   const fetchInventory = async () => {
@@ -180,6 +182,52 @@ const Inventory = () => {
       title: "Inventory refreshed",
       description: "The inventory data has been updated from the database",
     });
+  };
+
+  // Open the modal and set the selected product
+  const handleUpdateClick = (product: InventoryItem) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  // Handle form submission to update the product
+  const handleUpdateProduct = async () => {
+    if (!selectedProduct) return;
+
+    try {
+      const { error } = await supabase
+        .from("inventory_items")
+        .update({
+          name: selectedProduct.name,
+          category: selectedProduct.category,
+          subcategory: selectedProduct.subcategory,
+          available: selectedProduct.available,
+          threshold: selectedProduct.threshold,
+          location: selectedProduct.location,
+        })
+        .eq("id", selectedProduct.id);
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error updating product",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Product updated",
+          description: "The product details have been successfully updated.",
+        });
+        setIsModalOpen(false); // Close the modal
+        fetchInventory(); // Refresh the inventory list
+      }
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Error updating product",
+        description: e.message,
+      });
+    }
   };
 
   return (
@@ -372,7 +420,7 @@ const Inventory = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleUpdateClick(item)}>
                             Update
                           </Button>
                         </TableCell>
@@ -391,6 +439,52 @@ const Inventory = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Update Product Modal */}
+      {isModalOpen && selectedProduct && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Update Product</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                label="Product Name"
+                value={selectedProduct.name}
+                onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+              />
+              <Input
+                label="Category"
+                value={selectedProduct.category || ""}
+                onChange={(e) => setSelectedProduct({ ...selectedProduct, category: e.target.value })}
+              />
+              <Input
+                label="Stock Level"
+                type="number"
+                value={selectedProduct.available || ""}
+                onChange={(e) => setSelectedProduct({ ...selectedProduct, available: parseInt(e.target.value) })}
+              />
+              <Input
+                label="Threshold"
+                type="number"
+                value={selectedProduct.threshold || ""}
+                onChange={(e) => setSelectedProduct({ ...selectedProduct, threshold: parseInt(e.target.value) })}
+              />
+              <Input
+                label="Location"
+                value={selectedProduct.location || ""}
+                onChange={(e) => setSelectedProduct({ ...selectedProduct, location: e.target.value })}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateProduct}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
