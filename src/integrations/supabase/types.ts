@@ -131,6 +131,45 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_items: {
+        Row: {
+          available: number | null
+          category: string | null
+          code: string
+          created_at: string | null
+          id: string
+          last_updated: string | null
+          location: string | null
+          name: string
+          subcategory: string | null
+          threshold: number | null
+        }
+        Insert: {
+          available?: number | null
+          category?: string | null
+          code: string
+          created_at?: string | null
+          id?: string
+          last_updated?: string | null
+          location?: string | null
+          name: string
+          subcategory?: string | null
+          threshold?: number | null
+        }
+        Update: {
+          available?: number | null
+          category?: string | null
+          code?: string
+          created_at?: string | null
+          id?: string
+          last_updated?: string | null
+          location?: string | null
+          name?: string
+          subcategory?: string | null
+          threshold?: number | null
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string | null
@@ -154,7 +193,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_inventory_item: {
+        Args: { item_code: string; new_available: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

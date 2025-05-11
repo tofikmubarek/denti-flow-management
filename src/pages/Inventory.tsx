@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -27,106 +27,30 @@ import {
   Search, 
   RefreshCcw,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
-// Mock inventory data
-const mockInventory = [
-  {
-    id: "INV-001",
-    code: "DT-SL-4010",
-    name: "Dentium SuperLine 4.0×10mm",
-    category: "Implants",
-    subcategory: "SuperLine",
-    available: 18,
-    threshold: 5,
-    location: "Main Storage",
-    lastUpdated: "2025-05-01T10:30:00"
-  },
-  {
-    id: "INV-002",
-    code: "DT-SL-3510",
-    name: "Dentium SuperLine 3.5×10mm",
-    category: "Implants",
-    subcategory: "SuperLine",
-    available: 12,
-    threshold: 5,
-    location: "Main Storage",
-    lastUpdated: "2025-05-01T10:30:00"
-  },
-  {
-    id: "INV-003",
-    code: "DT-SL-4008",
-    name: "Dentium SuperLine 4.0×8mm",
-    category: "Implants",
-    subcategory: "SuperLine",
-    available: 3,
-    threshold: 5,
-    location: "Main Storage",
-    lastUpdated: "2025-05-02T14:15:00"
-  },
-  {
-    id: "INV-004",
-    code: "DT-ID-001",
-    name: "Dentium Implant Driver",
-    category: "Tools",
-    subcategory: "Drivers",
-    available: 8,
-    threshold: 3,
-    location: "Tool Storage",
-    lastUpdated: "2025-04-28T09:45:00"
-  },
-  {
-    id: "INV-005",
-    code: "DT-IC-001",
-    name: "Impression Coping",
-    category: "Components",
-    subcategory: "Impressions",
-    available: 4,
-    threshold: 10,
-    location: "Secondary Storage",
-    lastUpdated: "2025-05-03T16:20:00"
-  },
-  {
-    id: "INV-006",
-    code: "DT-HB-001",
-    name: "Healing Abutment",
-    category: "Components",
-    subcategory: "Abutments",
-    available: 22,
-    threshold: 15,
-    location: "Secondary Storage",
-    lastUpdated: "2025-04-30T11:10:00"
-  },
-  {
-    id: "INV-007",
-    code: "DT-ST-4010",
-    name: "Dentium SlimLine 4.0×10mm",
-    category: "Implants",
-    subcategory: "SlimLine",
-    available: 7,
-    threshold: 5,
-    location: "Main Storage",
-    lastUpdated: "2025-05-01T10:30:00"
-  },
-  {
-    id: "INV-008",
-    code: "DT-ST-3508",
-    name: "Dentium SlimLine 3.5×8mm",
-    category: "Implants",
-    subcategory: "SlimLine",
-    available: 9,
-    threshold: 5,
-    location: "Main Storage",
-    lastUpdated: "2025-04-29T15:45:00"
-  }
-];
+// Define inventory item type to match the database schema
+type InventoryItem = {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  subcategory: string | null;
+  available: number | null;
+  threshold: number | null;
+  location: string | null;
+  last_updated: string | null;
+};
 
-const getStockStatus = (available: number, threshold: number) => {
-  if (available <= 0) return "Out of Stock";
-  if (available < threshold) return "Low Stock";
-  if (available >= threshold && available < threshold * 2) return "Adequate";
+const getStockStatus = (available: number | null, threshold: number | null) => {
+  if (!available || available <= 0) return "Out of Stock";
+  if (!threshold || available < threshold) return "Low Stock";
+  if (available >= threshold && available < (threshold * 2)) return "Adequate";
   return "Good";
 };
 
@@ -153,7 +77,8 @@ const getStockIcon = (status: string) => {
   }
 };
 
-const getProgressColor = (available: number, threshold: number) => {
+const getProgressColor = (available: number | null, threshold: number | null) => {
+  if (!available || !threshold) return "bg-red-500";
   const ratio = available / threshold;
   if (ratio <= 0) return "bg-red-500";
   if (ratio < 1) return "bg-amber-500";
@@ -165,27 +90,106 @@ const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all_categories");
   const [stockFilter, setStockFilter] = useState<string>("all_statuses");
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("all");
 
-  const filteredInventory = mockInventory.filter(item => {
-    const matchesSearch = !searchTerm || 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch inventory items from Supabase
+  const fetchInventory = async () => {
+    setLoading(true);
+    setError(null);
     
-    const matchesCategory = categoryFilter === "all_categories" || item.category === categoryFilter;
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+      
+      if (error) {
+        setError(error.message);
+        toast({
+          variant: "destructive",
+          title: "Error loading inventory",
+          description: error.message,
+        });
+      } else if (data) {
+        setInventory(data as InventoryItem[]);
+        
+        // Extract unique categories for the filter
+        const uniqueCategories = Array.from(new Set(data.map(item => item.category).filter(Boolean))) as string[];
+        setCategories(uniqueCategories);
+      }
+    } catch (e: any) {
+      setError(e.message);
+      toast({
+        variant: "destructive",
+        title: "Error loading inventory",
+        description: e.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Load inventory data when component mounts
+  useEffect(() => {
+    fetchInventory();
+  }, []);
+  
+  // Filter inventory based on search term and filters
+  const filteredInventory = inventory.filter(item => {
+    // Filter by search term
+    const matchesSearch = !searchTerm || 
+      (item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.code && item.code.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Filter by category
+    const matchesCategory = 
+      categoryFilter === "all_categories" || 
+      item.category === categoryFilter;
+    
+    // Filter by tab selection
+    const matchesTab = 
+      activeTab === "all" || 
+      (item.category && item.category.toLowerCase() === activeTab.toLowerCase());
+    
+    // Filter by stock status
     const status = getStockStatus(item.available, item.threshold);
     const matchesStock = stockFilter === "all_statuses" || status === stockFilter;
     
-    return matchesSearch && matchesCategory && matchesStock;
+    return matchesSearch && matchesCategory && matchesStock && matchesTab;
   });
+
+  // Calculate statistics
+  const lowStockCount = inventory.filter(item => {
+    if (item.available === null || item.threshold === null) return false;
+    return item.available < item.threshold;
+  }).length;
+  
+  const outOfStockCount = inventory.filter(item => {
+    return item.available === null || item.available <= 0;
+  }).length;
+  
+  // Handle refresh/sync button
+  const handleRefresh = () => {
+    fetchInventory();
+    toast({
+      title: "Inventory refreshed",
+      description: "The inventory data has been updated from the database",
+    });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-brand-dark">Inventory</h1>
         <div className="space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleRefresh}>
             <RefreshCcw className="h-4 w-4 mr-2" />
-            Sync with Mintsoft
+            Refresh
           </Button>
           <Button variant="outline">
             <FileDown className="h-4 w-4 mr-2" />
@@ -202,14 +206,14 @@ const Inventory = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="stats-label">Total Products</div>
-            <div className="stats-value">{mockInventory.length}</div>
+            <div className="stats-value">{inventory.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="stats-label">Low Stock Items</div>
             <div className="stats-value text-amber-500">
-              {mockInventory.filter(item => item.available < item.threshold).length}
+              {lowStockCount}
             </div>
           </CardContent>
         </Card>
@@ -217,15 +221,17 @@ const Inventory = () => {
           <CardContent className="pt-6">
             <div className="stats-label">Out of Stock</div>
             <div className="stats-value text-red-500">
-              {mockInventory.filter(item => item.available <= 0).length}
+              {outOfStockCount}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="stats-label">Last Synced</div>
-            <div className="text-sm font-medium text-brand-dark">1 hour ago</div>
-            <Button variant="link" className="p-0 h-auto text-xs text-brand-blue">
+            <div className="text-sm font-medium text-brand-dark">
+              {new Date().toLocaleTimeString()}
+            </div>
+            <Button variant="link" className="p-0 h-auto text-xs text-brand-blue" onClick={handleRefresh}>
               Sync Now
             </Button>
           </CardContent>
@@ -238,7 +244,7 @@ const Inventory = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row justify-between mb-6 space-y-4 md:space-y-0 md:space-x-2">
-            <Tabs defaultValue="all" className="w-full md:w-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
               <TabsList>
                 <TabsTrigger value="all">All Products</TabsTrigger>
                 <TabsTrigger value="implants">Implants</TabsTrigger>
@@ -264,9 +270,9 @@ const Inventory = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all_categories">All Categories</SelectItem>
-                  <SelectItem value="Implants">Implants</SelectItem>
-                  <SelectItem value="Tools">Tools</SelectItem>
-                  <SelectItem value="Components">Components</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -287,6 +293,7 @@ const Inventory = () => {
                 setSearchTerm("");
                 setCategoryFilter("all_categories");
                 setStockFilter("all_statuses");
+                setActiveTab("all");
               }}>
                 <Filter className="h-4 w-4 mr-2" />
                 Reset
@@ -308,54 +315,70 @@ const Inventory = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredInventory.map((item) => {
-                  const status = getStockStatus(item.available, item.threshold);
-                  return (
-                    <TableRow key={item.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{item.code}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-xs text-gray-500">{item.subcategory}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline">{item.category}</Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">{item.location}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span>{item.available} units</span>
-                            <span className="text-gray-500">Min: {item.threshold}</span>
-                          </div>
-                          <Progress 
-                            value={(item.available / (item.threshold * 2)) * 100} 
-                            max={100} 
-                            className={getProgressColor(item.available, item.threshold)}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className={`status-badge ${getStockStatusClass(status)} flex items-center w-fit`}>
-                          {getStockIcon(status)}
-                          {status}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          Update
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {filteredInventory.length === 0 && (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      <div className="flex justify-center items-center">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        <span>Loading inventory...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-red-500">
+                      Error loading inventory: {error}
+                    </TableCell>
+                  </TableRow>
+                ) : filteredInventory.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                       No products found matching your filters
                     </TableCell>
                   </TableRow>
+                ) : (
+                  filteredInventory.map((item) => {
+                    const status = getStockStatus(item.available, item.threshold);
+                    return (
+                      <TableRow key={item.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{item.code}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-xs text-gray-500">{item.subcategory}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="outline">{item.category}</Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">{item.location}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span>{item.available} units</span>
+                              <span className="text-gray-500">Min: {item.threshold}</span>
+                            </div>
+                            <Progress 
+                              value={item.available && item.threshold ? (item.available / (item.threshold * 2)) * 100 : 0} 
+                              max={100} 
+                              className={getProgressColor(item.available, item.threshold)}
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className={`status-badge ${getStockStatusClass(status)} flex items-center w-fit px-2 py-1 rounded text-xs`}>
+                            {getStockIcon(status)}
+                            {status}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">
+                            Update
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -363,7 +386,7 @@ const Inventory = () => {
           
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-500">
-              Showing {filteredInventory.length} of {mockInventory.length} products
+              Showing {filteredInventory.length} of {inventory.length} products
             </div>
           </div>
         </CardContent>
