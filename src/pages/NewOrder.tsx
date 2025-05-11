@@ -25,6 +25,7 @@ import * as z from "zod";
 import { X, Plus, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 
 const formSchema = z.object({
   customerName: z.string().min(2, {
@@ -81,13 +82,50 @@ const NewOrder = () => {
     name: "items",
   });
 
-  const onSubmit = (values: FormValues) => {
-    toast({
-      title: "Order Created",
-      description: `New order for ${values.customerName} created successfully.`,
-    });
-    console.log(values);
-    // Would handle actual submission to API here
+  const onSubmit = async (values: FormValues) => {
+    try {
+      // Insert the order into the database
+      const { data, error } = await supabase.from("orders").insert({
+        customer_name: values.customerName,
+        customer_email: values.customerEmail,
+        customer_phone: values.customerPhone,
+        customer_company: values.customerCompany || null,
+        order_source: values.orderSource,
+        notes: values.notes || null,
+        items: values.items.map((item) => ({
+          code: item.code,
+          description: item.description,
+          quantity: Number(item.quantity),
+          unit_price: Number(item.unitPrice),
+        })),
+        total_amount: values.items.reduce((sum, item) => {
+          const quantity = Number(item.quantity) || 0;
+          const price = Number(item.unitPrice) || 0;
+          return sum + quantity * price;
+        }, 0),
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error creating order",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Order Created",
+          description: `New order for ${values.customerName} created successfully.`,
+        });
+        // Redirect to the orders page after successful creation
+        window.location.href = "/orders";
+      }
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Error creating order",
+        description: e.message,
+      });
+    }
   };
 
   const addItem = () => {
