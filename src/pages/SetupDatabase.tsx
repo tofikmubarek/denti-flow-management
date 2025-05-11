@@ -1,78 +1,85 @@
 
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { createTableSQL } from '@/lib/db/contacts';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
-import { Clipboard, CheckCircle, AlertCircle } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 const SetupDatabase = () => {
-  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreated, setIsCreated] = useState(false);
-  
-  useEffect(() => {
-    // Check if tables already exist
-    const checkTables = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('contacts')
-          .select('id')
-          .limit(1);
-        
-        if (!error && data) {
-          setIsCreated(true);
-        }
-      } catch (error) {
-        console.error('Error checking tables:', error);
-      }
-    };
-    
-    checkTables();
-  }, []);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(createTableSQL);
-    setCopied(true);
-    toast({
-      title: "Copied to clipboard",
-      description: "SQL has been copied to your clipboard",
-    });
-    
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const createTables = async () => {
+  const runSampleQueries = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      // Use a generic SQL execution RPC - this fixed the type error
-      const { error } = await supabase.rpc('run_sql_query', { 
-        query: createTableSQL 
+      // Call the edge function to run the sample queries
+      const { data, error } = await supabase.functions.invoke('run-sql-query', {
+        body: {
+          query: `
+            -- Sample queries to populate and manipulate data
+            CREATE TABLE IF NOT EXISTS public.inventory_items (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              code TEXT UNIQUE NOT NULL,
+              name TEXT NOT NULL,
+              category TEXT NOT NULL,
+              supplier TEXT,
+              unit_price DECIMAL(10, 2) NOT NULL,
+              available INTEGER NOT NULL DEFAULT 0,
+              reorder_level INTEGER NOT NULL DEFAULT 10,
+              last_updated TIMESTAMP WITH TIME ZONE DEFAULT now()
+            );
+            
+            -- Clear existing data if any
+            DELETE FROM public.inventory_items;
+            
+            -- Insert sample data
+            INSERT INTO public.inventory_items (code, name, category, supplier, unit_price, available, reorder_level)
+            VALUES
+              ('IMPL-TI-001', 'Titanium Dental Implant 3.5mm', 'Implants', 'DentalCraft Inc.', 129.99, 45, 10),
+              ('IMPL-TI-002', 'Titanium Dental Implant 4.0mm', 'Implants', 'DentalCraft Inc.', 139.99, 38, 10),
+              ('IMPL-TI-003', 'Titanium Dental Implant 5.0mm', 'Implants', 'DentalCraft Inc.', 149.99, 22, 8),
+              ('IMPL-ZR-001', 'Zirconia Implant 3.5mm', 'Implants', 'WhiteDent Medical', 189.99, 15, 5),
+              ('IMPL-ZR-002', 'Zirconia Implant 4.0mm', 'Implants', 'WhiteDent Medical', 199.99, 12, 5),
+              ('COMP-A2-001', 'Composite Resin A2 Shade', 'Restorative', 'DentalMate Corp', 45.50, 28, 12),
+              ('COMP-A3-001', 'Composite Resin A3 Shade', 'Restorative', 'DentalMate Corp', 45.50, 35, 12),
+              ('COMP-B2-001', 'Composite Resin B2 Shade', 'Restorative', 'DentalMate Corp', 45.50, 18, 8),
+              ('AMAL-001', 'Dental Amalgam Capsules', 'Restorative', 'SilverDent', 35.25, 40, 15),
+              ('ANES-LID-001', 'Lidocaine 2% with Epinephrine', 'Anesthetics', 'PainFree Medical', 28.75, 50, 20),
+              ('ANES-MEP-001', 'Mepivacaine 3%', 'Anesthetics', 'PainFree Medical', 30.25, 35, 15),
+              ('ENDO-FILE-001', 'K-Files Assorted 15-40', 'Endodontic', 'RootMaster', 19.99, 42, 15),
+              ('ENDO-FILE-002', 'K-Files Assorted 45-80', 'Endodontic', 'RootMaster', 19.99, 30, 10),
+              ('BUR-DIAM-001', 'Diamond Burs FG Round', 'Burs', 'CuttingEdge Tools', 12.50, 65, 25),
+              ('BUR-DIAM-002', 'Diamond Burs FG Tapered', 'Burs', 'CuttingEdge Tools', 13.75, 58, 25),
+              ('BUR-CARB-001', 'Carbide Burs FG Round', 'Burs', 'CuttingEdge Tools', 9.99, 72, 30),
+              ('GLOVE-S', 'Nitrile Gloves Small', 'PPE', 'SafeHands', 8.50, 120, 50),
+              ('GLOVE-M', 'Nitrile Gloves Medium', 'PPE', 'SafeHands', 8.50, 85, 50),
+              ('GLOVE-L', 'Nitrile Gloves Large', 'PPE', 'SafeHands', 8.50, 95, 50),
+              ('MASK-001', 'Surgical Masks Level 3', 'PPE', 'SafeHands', 12.99, 150, 75);
+          `
+        }
       });
-      
+
       if (error) {
-        console.error('Error creating tables:', error);
-        toast({
-          variant: "destructive",
-          title: "Error creating tables",
-          description: "Please run the SQL manually in the Supabase SQL editor",
-        });
-      } else {
-        toast({
-          title: "Tables created successfully",
-          description: "Your database is now set up and ready to use",
-        });
-        setIsCreated(true);
+        throw new Error(error.message);
       }
-    } catch (error) {
-      console.error('Error creating tables:', error);
+
+      setSuccess(true);
+      toast({
+        title: "Database setup successful",
+        description: "Sample data has been loaded into your database",
+      });
+    } catch (err) {
+      console.error('Error setting up database:', err);
+      setError(err instanceof Error ? err.message : 'Failed to set up database');
       toast({
         variant: "destructive",
-        title: "Error creating tables",
-        description: "Please run the SQL manually in the Supabase SQL editor",
+        title: "Database setup failed",
+        description: err instanceof Error ? err.message : 'Failed to set up database',
       });
     } finally {
       setIsLoading(false);
@@ -80,74 +87,47 @@ const SetupDatabase = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl py-8">
-      <h1 className="text-3xl font-bold mb-8">Database Setup</h1>
-      
-      {isCreated ? (
-        <Alert className="mb-8 bg-green-50 border-green-200">
-          <CheckCircle className="h-5 w-5 text-green-500" />
-          <AlertTitle>Database is ready!</AlertTitle>
-          <AlertDescription>
-            Your Supabase database is configured and ready to use.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Alert className="mb-8 bg-amber-50 border-amber-200">
-          <AlertCircle className="h-5 w-5 text-amber-500" />
-          <AlertTitle>Database setup required</AlertTitle>
-          <AlertDescription>
-            You need to set up your database tables to use this application.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Card>
+    <div className="container mx-auto py-6">
+      <Card className="max-w-3xl mx-auto">
         <CardHeader>
-          <CardTitle>Database Configuration</CardTitle>
+          <CardTitle>Database Setup</CardTitle>
           <CardDescription>
-            Create the necessary tables in your Supabase project.
+            Set up your database with sample dental inventory data.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="automatic">
-            <TabsList className="mb-4">
-              <TabsTrigger value="automatic">Automatic Setup</TabsTrigger>
-              <TabsTrigger value="manual">Manual Setup</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="automatic">
-              <p className="mb-4">Click the button below to automatically create all required tables in your Supabase project.</p>
-              <Button 
-                onClick={createTables} 
-                disabled={isLoading || isCreated}
-                className="w-full"
-              >
-                {isLoading ? 'Setting up...' : isCreated ? 'Tables Created' : 'Create Tables'}
-              </Button>
-            </TabsContent>
-            
-            <TabsContent value="manual">
-              <p className="mb-4">Copy the SQL below and run it in the Supabase SQL Editor.</p>
-              <div className="relative">
-                <pre className="bg-gray-100 p-4 rounded-md overflow-x-auto max-h-[400px] text-xs">
-                  {createTableSQL}
-                </pre>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="absolute top-2 right-2"
-                  onClick={copyToClipboard}
-                >
-                  {copied ? <CheckCircle className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-        <CardFooter className="flex flex-col items-start">
-          <p className="text-sm text-gray-500">
-            This will create the following tables: <code>contacts</code>, <code>addresses</code>, <code>tags</code>, and <code>contact_tags</code>.
+        <CardContent className="space-y-4">
+          <p>
+            Clicking the button below will create and populate the necessary tables in your Supabase
+            database with sample dental inventory data.
           </p>
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {success && (
+            <Alert className="bg-green-50 text-green-800 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertTitle>Success</AlertTitle>
+              <AlertDescription>
+                Database setup completed successfully! You can now explore the application.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+        <CardFooter>
+          <Button 
+            onClick={runSampleQueries} 
+            disabled={isLoading || success}
+          >
+            {isLoading ? "Setting up..." : success ? "Setup Complete" : "Set Up Database"}
+          </Button>
         </CardFooter>
       </Card>
     </div>
